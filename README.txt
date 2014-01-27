@@ -4,13 +4,12 @@ PSBox --- A matlab toolbox for photometric stereo.
 
 Author: Ying Xiong.
 Created: Jan 24, 2014.
-Release: Jan 25, 2014 (v0.1).
+Release: Jan 27, 2014 (v0.2).
 
 ================================================================
 Quick start.
 ================================================================
->> addpath('NLLSBox');
->> addpath('Utils');
+>> setPath
 >> demoPSBox;
 
 ================================================================
@@ -66,3 +65,4 @@ Features.
 * Fit the circle of chrome sphere from manual extracted points.
 * Find lighting direction from given chrome sphere.
 * Perform photometric stereo to recover albedo and normal map.
+* Recover depth map from estimated normal vector field.

@@ -4,6 +4,7 @@ NLLSBox --- A matlab toolbox for nonlinear least squares problem.
 
 Author: Ying Xiong.
 Created: Jan 20, 2014.
+Release: Jan 22, 2014(v0.1.1).
 
 ================================================================
 Quick start.

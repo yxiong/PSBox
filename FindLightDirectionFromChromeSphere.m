@@ -6,6 +6,8 @@ function l = FindLightDirectionFromChromeSphere(I, circle, threshold, options)
 % the specular highlights. The code assumes an orthographic camera model. The
 % coordinate system origins at the object sphere, with camera direction (0,0,1).
 % In the camera point of view, it is looking at the sphere in (0,0,-1) direction.
+% The x direction increases the column index of 'I', and y direciton increases
+% the row index.
 %
 % INPUT:
 %   I: the image of a specular chrome sphere.

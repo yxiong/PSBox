@@ -92,11 +92,22 @@ for i = 1:nImgs
   shadow_mask(:,:,i) = imerode(shadow_mask(:,:,i), se);
 end
 
-%% Do the photometric stereo.
+%% Estimate the normal vectors.
 fprintf('Running photometric stereo...\n');
 [rho, n] = PhotometricStereo(I, shadow_mask, L);
 
 % Visualize the normal map.
 figure; imshow(n); axis xy;
 
-fprintf('Done.\n');
+%% Estimate depth map from the normal vectors.
+p = -n(:,:,1) ./ n(:,:,3);
+q = -n(:,:,2) ./ n(:,:,3);
+p(isnan(p)) = 0;
+q(isnan(q)) = 0;
+Z = DepthFromGradient(p, q);
+
+figure;
+Z(isnan(n(:,:,1)) | isnan(n(:,:,2)) | isnan(n(:,:,3))) = NaN;
+surf(Z, 'EdgeColor', 'None', 'FaceColor', [0.5 0.5 0.5]);
+axis equal; camlight;
+view(-75, 30);

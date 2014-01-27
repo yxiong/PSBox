@@ -1,3 +1,6 @@
+Jan 27, 2014 (v0.2) ---
+  Recover depth map from estimated normal vector field.
+
 Jan 25, 2014 (v0.1) ---
   Fit the circle of chrome sphere from manual extracted points.
   Find lighting direction from given chrome sphere.
