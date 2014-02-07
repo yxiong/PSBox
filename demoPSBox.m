@@ -60,30 +60,16 @@ PSFitLightProbeCircle(topDir);
 fprintf('Finding light directions...\n');
 PSFindLightDirection(topDir);
 
-%% Load data into memory and prepare to do photometric stereo.
+%% Load data and prepare to do photometric stereo.
 
-fprintf('Loading data into memory...\n');
+fprintf('Loading data...\n');
 % Load lighting directions.
-L1 = textread(fullfile(topDir, 'LightProbe-1', 'light_directions.txt'));
-L2 = textread(fullfile(topDir, 'LightProbe-2', 'light_directions.txt'));
-L = normc(L1+L2);
-
+L = textread(fullfile(topDir, 'light_directions.txt'));
 % Load images.
-objDir = fullfile(topDir, 'Objects');
-imgFiles = dir(fullfile(objDir, ['Image_*.' rawOutSuffix]));
-nImgs = length(imgFiles);
-I = imread(fullfile(objDir, imgFiles(1).name));
-[M, N, C] = size(I);
-
-I = zeros(M, N, nImgs);
-for i = 1:nImgs
-  Itmp = im2double(imread(fullfile(objDir, imgFiles(i).name)));
-  Itmp = Itmp(end:-1:1, :, imgChannel);
-  % Normalize over the 99 percentile. This makes sense when the object is of of
-  % uniform albedo.
-  I(:,:,i) = Itmp / prctile(Itmp(:), 99);
-end
-
+loadOpts = struct('ImageChannel', imgChannel, ...
+                  'NormalizePercentile', 99);
+I = PSLoadProcessedImages(fullfile(topDir, 'Objects'), rawOutSuffix, loadOpts);
+nImgs = size(I, 3);
 % Create a shadow mask.
 shadow_mask = (I > shadowThresh);
 se = strel('disk', 5);

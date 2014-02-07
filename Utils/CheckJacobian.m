@@ -39,7 +39,7 @@ if (nargin == 2)
   data = [];
 elseif (nargin == 3)
   if (isstruct(varargin{3}))    data = varargin{3};
-  else                          M = varargin{3};
+  else                          M = varargin{3};   data = [];
   end
 elseif (nargin == 4)
   M = varargin{3};

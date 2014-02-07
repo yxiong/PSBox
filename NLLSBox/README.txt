@@ -4,7 +4,7 @@ NLLSBox --- A matlab toolbox for nonlinear least squares problem.
 
 Author: Ying Xiong.
 Created: Jan 20, 2014.
-Release: Jan 22, 2014(v0.1.1).
+Release: Feb 05, 2014(v0.2.1).
 
 ================================================================
 Quick start.
@@ -34,5 +34,7 @@ Features.
 ================================================================
 * Same interface but better than 'lsqnonlin'.
 * Levenberg-Marquardt algorithm.
+* Support bounded constraints.
+* Support using finite difference to compute Jacobian matrix.
 
 See 'NonlinearLeastSquares.pdf' for a more detailed documentation.

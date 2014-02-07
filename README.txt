@@ -4,12 +4,12 @@ PSBox --- A matlab toolbox for photometric stereo.
 
 Author: Ying Xiong.
 Created: Jan 24, 2014.
-Release: Jan 27, 2014 (v0.2).
+Release: Feb 07, 2014 (v0.2.1).
 
 ================================================================
 Quick start.
 ================================================================
->> setPath
+>> setPath;
 >> demoPSBox;
 
 ================================================================

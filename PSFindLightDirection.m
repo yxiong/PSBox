@@ -1,9 +1,16 @@
 function PSFindLightDirection(topDir)
 
+% PSFindLightDirection(topDir)
+%
+% Find light source directions from the light probe images.
+%
 %   Author: Ying Xiong.
 %   Created: Jan 24, 2014.
 
-for iProbe = 1:2
+nProbes = 2;
+
+%% Analyze light probe images.
+for iProbe = 1:nProbes
   % Find all light probe images.
   probeDir = fullfile(topDir, ['LightProbe-' num2str(iProbe)]);
   imgFiles = dir(fullfile(probeDir, 'Image_*.JPG'));
@@ -25,5 +32,16 @@ for iProbe = 1:2
   drawnow;
   % Write result to output.
   dlmwrite(fullfile(probeDir, 'light_directions.txt'), L, ...
-           'delimiter', ' ', 'precision', '%10.6f');
+           'delimiter', ' ', 'precision', '%20.16f');
 end
+
+%% Take average of direction by each probe.
+L = zeros(3, nImgs);
+for iProbe = 1:nProbes
+  probeDir = fullfile(topDir, ['LightProbe-' num2str(iProbe)]);
+  Li = textread(fullfile(probeDir, 'light_directions.txt'));
+  L = L + Li;
+end
+L = normc(L);
+dlmwrite(fullfile(topDir, 'light_directions.txt'), L, ...
+         'delimiter', ' ', 'precision', '%20.16f');

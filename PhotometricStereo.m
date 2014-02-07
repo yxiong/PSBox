@@ -18,17 +18,39 @@ function [rho, n] = PhotometricStereo(I, mask, L)
 %   Author: Ying Xiong.
 %   Created: Jan 25, 2014.
 
+% Resize the input to MxN.
 [N1, N2, M] = size(I);
+N = N1*N2;
+I = reshape(I, [N, M])';
+mask = reshape(mask, [N, M]);
 
-b = nan(N1, N2, 3);
-for j1 = 1:N1
-  ShowProgress(j1, N1, 10, 'PhotometricStereo', 1);
-  for j2 = 1:N2
-    Ij = squeeze(I(j1,j2,:));
-    tag = squeeze(mask(j1,j2,:));
-    b(j1,j2,:) = (L(:,tag)') \ Ij(tag);
+% Create a mask index for efficient computation.
+maskIndex = zeros(N, 1);
+for i = 1:M
+  maskIndex = maskIndex*2 + mask(:,i);
+end
+uniqueMaskIndices = unique(maskIndex);
+
+% Estimate scaled normal vectors.
+b = nan(3, N);
+for iIdx = 1:length(uniqueMaskIndices)
+  idx = uniqueMaskIndices(iIdx);
+  % Find all pixels with this index.
+  pixelIdx = find(maskIndex==idx);
+  % Find all images that are active by this index.
+  imageTag = mask(pixelIdx(1), :);
+  if (sum(imageTag) < 3)
+    continue;
   end
+  % Create a 3xM' lighting matrix L.
+  Li = L(:, imageTag);
+  % Create an M'xN' matrix of image intensities.
+  Ii = I(imageTag, pixelIdx);
+  % Compute the scaled normal.
+  b(:, pixelIdx) = Li' \ Ii;
 end
 
+% Get albedo and unit normal vector.
+b = reshape(b', [N1, N2, 3]);
 rho = sqrt(sum(b.^2, 3));
 n = b ./ repmat(rho, [1 1 3]);

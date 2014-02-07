@@ -11,14 +11,16 @@ function [x, F, f, exitflag] = NonlinearLeastSquares(fcn, x0, lb, ub, options)
 %
 % INPUT:
 %   fcn: a vector fection to be minimized, with the form
-%          [f, J] = fcn(x)
+%            [f, J] = fcn(x)
 %        with 'x' an input Nx1 vector, 'f' an Mx1 vector for function values and
 %        'J' a MxN matrix for the Jacobian matrix.
-%        [TODO] Currently the Jacobian has to be provided by users.
+%        One does not have to compute the Jacobian of the function, by simply
+%        providing
+%            f = fcn(x)
+%        and set 'options.Jacobian=off'.
 %   x0:  initial guess, Nx1 vector.
-%   lb, ub: the lower and upper bound of the variable 'x'.
-%           [TODO] Currently these two parameters are not supported and has
-%           to be set to [].
+%   lb, ub: the lower and upper bound of the variable 'x'. Can be [] or 'Inf'
+%           if not bound needs to be enforced.
 %   options: a struct with following supported fields.
 %     'DerivativeCheck': compare the user-supplied derivatives with to
 %                finite-differencing ones, options {'off'} or 'on'. The gradient
@@ -28,6 +30,10 @@ function [x, F, f, exitflag] = NonlinearLeastSquares(fcn, x0, lb, ub, options)
 %                'final-detailed', 'iter', 'iter-detailed'.
 %                NOTE: the default is different from 'lsqnonlin'.
 %                [TODO] The 'final-detailed' option is not properly supported yet.
+%     'Jacobian':Whether to use the Jacobian given by 'fcn' or perform finite
+%                difference. Options are {'on'} (use 'fcn') or 'off' (use finite
+%                difference).
+%                NOTE: the default is different from 'lsqnonlin'.
 %     'MaxIter': Maximum number of iterations allowed, default {400}.
 %     'TolFun':  Termination tolerance on 'f', default {1e-6}.
 %     'TolX':    Termination tolerance on 'x', default {1e-6}.
@@ -52,31 +58,39 @@ function [x, F, f, exitflag] = NonlinearLeastSquares(fcn, x0, lb, ub, options)
 %   Created: Jan 20, 2014.
 
 %% Check input and setup parameters.
-% [TODO]: Check whether 'lb' and 'ub' are set to [].
-if (exist('lb', 'var') && ~isempty(lb))
-  error('Parameter ''lb'' currently not supported.');
-end
-if (exist('ub', 'var') && ~isempty(ub))
-  error('Parameter ''ub'' currently not supported.');
-end
-% Create empty 'options' if not provided.
-if (~exist('options', 'var'))
-  options = [];
-end
+if (~exist('lb', 'var'))        lb = [];        end
+if (~exist('ub', 'var'))        ub = [];        end
+if (~exist('options', 'var'))   options = [];   end
 % Get options from the struct.
-[DerivativeCheck, Display, MaxIter, TolFun, TolX] = GetOptions(options);
+[DerivativeCheck, Display, MaxIter, Jacobian, TolFun, TolX] = GetOptions(options);
 [tau, JJDamp] = GetLMOptions(options);
+
+%% Remove the bounded constraint.
+N = length(x0);
+if ((~isempty(lb) && any(isfinite(lb))) || ...
+    (~isempty(ub) && any(isfinite(ub))))
+  BoundedConstraint = 1;
+  if (isempty(lb))    lb = -Inf(N,1);   end
+  if (isempty(ub))    ub =  Inf(N,1);   end
+  lb = lb(:);
+  ub = ub(:);
+  assert(all(lb<=x0) && all(x0<=ub));
+  fcn = BoundedFcnToUnconstrainedFcn(fcn, lb, ub);
+  mapfcn = MapBoundedToUnconstrained(lb, ub);
+  x0 = mapfcn(x0);
+else
+  BoundedConstraint = 0;
+end
 
 %% Initialization.
 x = x0;
-N = length(x);
-[f, J] = fcn(x);
+[f, J] = EvalFcnAndGetJacobian(fcn, x, Jacobian);
 F = sum(f.^2);
 JJ = J' * J;
 Jf = J' * f;
 mu = tau * max(diag(JJ));
+mu_min = 1e-12;
 nu = 2;
-iter = 0;
 
 % The followings might be needed for the first iteration's stop criternion, in
 % case one starts at a local minimum.
@@ -99,21 +113,21 @@ for iter = 1:MaxIter
   else           h = -(JJ + mu*eye(N)) \ Jf;        end
   % Compute gain ratio 'rho'.
   x_new = x + h;
-  [f_new, J_new] = fcn(x_new);
+  [f_new, J_new] = EvalFcnAndGetJacobian(fcn, x_new, Jacobian);
   F_new = sum(f_new.^2);
   if (JJDamp)    rho_denom = h' * (mu*diag(diag(JJ))*h - Jf);
   else           rho_denom = h' * (mu*h - Jf);                   end
-  rho = (F - F_new) ./ rho_denom;
+  rho = (F - F_new) / rho_denom;
   % Update the variable if step is accepted.
   if (rho > 0)
     % Step accepted.
     x_old = x;   x = x_new;
     f_old = f;   f = f_new;
-    F_old = F;   F = F_new;
+    F = F_new;
     J = J_new;
     JJ = J' * J;
     Jf = J' * f;
-    mu = mu * max(1/3, 1-(2*rho-1)^3);
+    mu = max(mu_min, mu * max(1/3, 1-(2*rho-1)^3));
     nu = 2;
   else
     % Step not accepted.
@@ -130,6 +144,11 @@ for iter = 1:MaxIter
   % Check the stop criterion.
   exitflag = StopCriterion(rho_denom, rho, x_old, x, TolX, f_old, f, TolFun);
   if (exitflag)    break;    end
+end
+
+if (BoundedConstraint)
+  mapfcn = MapUnconstrainedToBounded(lb, ub);
+  x = mapfcn(x);
 end
 
 if (Display >= 1)
@@ -172,7 +191,8 @@ end
 
 end
 
-function [DerivativeCheck, Display, MaxIter, TolFun, TolX] = GetOptions(options)
+function [DerivativeCheck, Display, MaxIter, Jacobian, TolFun, TolX] = ...
+      GetOptions(options)
 
 if (~isfield(options, 'DerivativeCheck'))     DerivativeCheck = 0;
 else
@@ -182,19 +202,22 @@ else
 end
 
 if (~isfield(options, 'Display'))             Display = 0;
-else
-  if (strcmp(options.Display, 'off'))         Display = 0;
-  elseif (strcmp(options.Display, 'none'))    Display = 0;
-  elseif (strcmp(options.Display, 'final'))   Display = 1;
-  elseif (strcmp(options.Display, 'final-detailed'))   Display = 2;
-  elseif (strcmp(options.Display, 'iter'))    Display = 3;
-  elseif (strcmp(options.Display, 'iter-detailed'))    Display = 4;
-  else   error('Unknown ''options.Display''.');
-  end
+elseif (strcmp(options.Display, 'none'))      Display = 0;
+elseif (strcmp(options.Display, 'off'))       Display = 0;
+elseif (strcmp(options.Display, 'final'))     Display = 1;
+elseif (strcmp(options.Display, 'final-detailed'))   Display = 2;
+elseif (strcmp(options.Display, 'iter'))      Display = 3;
+elseif (strcmp(options.Display, 'iter-detailed'))    Display = 4;
+else   error('Unknown options.Display ''%s''.', options.Display);
 end
 
 if (~isfield(options, 'MaxIter'))             MaxIter = 400;
 else   MaxIter = options.MaxIter;   end
+
+if (~isfield(options, 'Jacobian'))            Jacobian = 1;
+elseif (strcmp(options.Jacobian, 'on'))       Jacobian = 1;
+elseif (strcmp(options.Jacobian, 'off'))      Jacobian = 0;
+end
 
 if (~isfield(options, 'TolFun'))              TolFun = 1e-6;
 else   TolFun = options.TolFun;     end
@@ -211,10 +234,18 @@ if (~isfield(options, 'LMtau'))               tau = 1e-3;
 else   tau = options.tau;   end
 
 if (~isfield(options, 'LMDampMatx'))          JJDamp = 0;
-else
-  if (strcmp(options.LMDampMatx, 'eye'))      JJDamp = 0;
-  elseif (strcmp(options.LMDampMatx, 'JJ'))   JJDamp = 1;
-  else   error('Unknown ''options.LMDampMatx''.');   end
+elseif (strcmp(options.LMDampMatx, 'eye'))    JJDamp = 0;
+elseif (strcmp(options.LMDampMatx, 'JJ'))     JJDamp = 1;
+else   error('Unknown ''options.LMDampMatx''.');
 end
 
+end
+
+function [f, J] = EvalFcnAndGetJacobian(fcn, x, Jacobian)
+
+if (Jacobian)
+  [f, J] = fcn(x);
+else
+  [J, f] = NumericalJacobian(fcn, x);
+end
 end
