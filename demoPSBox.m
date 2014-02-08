@@ -1,6 +1,8 @@
 %   Author: Ying Xiong.
 %   Created: Jan 24, 2014.
 
+rng(0);
+
 %% Setup parameters.
 % Change the 'topDir' to your local data directory.
 topDir = fullfile(fileparts(mfilename('fullpath')), 'data');
@@ -78,20 +80,43 @@ for i = 1:nImgs
   shadow_mask(:,:,i) = imerode(shadow_mask(:,:,i), se);
 end
 
+%% Estimate lighting strength.
+fprintf('Estimating lighting strength...\n');
+lsOpts = struct('nSamples', 1000);
+lambda = PSEstimateLightStrength(I, shadow_mask, L, lsOpts);
+dlmwrite(fullfile(topDir, 'light_strength.txt'), lambda, ...
+         'precision', '%20.16f');
+
 %% Estimate the normal vectors.
-fprintf('Running photometric stereo...\n');
+% Without using light strength estimation.
+fprintf(['Estimating normal vectors and albedo (without light strength ' ...
+         'estimation) ...\n']);
 [rho, n] = PhotometricStereo(I, shadow_mask, L);
+% Evaluate normal estimate by intensity error.
+evalOpts = struct('Display', 1);
+Ierr = EvalNEstimateByIError(rho, n, I, shadow_mask, L, evalOpts);
+
+% Using light strength estimation.
+fprintf(['Estimating normal vectors and albedo (with light strength ' ...
+         'estimation) ...\n']);
+lambda = textread(fullfile(topDir, 'light_strength.txt'));
+L = repmat(lambda', [3 1]) .* L;
+[rho, n] = PhotometricStereo(I, shadow_mask, L);
+% Evaluate normal estimate by intensity error.
+evalOpts = struct('Display', 1);
+Ierr = EvalNEstimateByIError(rho, n, I, shadow_mask, L, evalOpts);
 
 % Visualize the normal map.
 figure; imshow(n); axis xy;
 
 %% Estimate depth map from the normal vectors.
+fprintf('Estimating depth map from normal vectors...\n');
 p = -n(:,:,1) ./ n(:,:,3);
 q = -n(:,:,2) ./ n(:,:,3);
 p(isnan(p)) = 0;
 q(isnan(q)) = 0;
 Z = DepthFromGradient(p, q);
-
+% Visualize depth map.
 figure;
 Z(isnan(n(:,:,1)) | isnan(n(:,:,2)) | isnan(n(:,:,3))) = NaN;
 surf(Z, 'EdgeColor', 'None', 'FaceColor', [0.5 0.5 0.5]);

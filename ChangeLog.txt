@@ -1,3 +1,6 @@
+Feb 08, 2014 (v0.3) ---
+  Estimate light strength by solving a nonlinear least squares problem.
+
 Feb 07, 2014 (v0.2.1) ---
   A (~10x) faster implementation by shadow mask index.
 

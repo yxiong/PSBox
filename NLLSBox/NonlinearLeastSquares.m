@@ -89,6 +89,12 @@ F = sum(f.^2);
 JJ = J' * J;
 Jf = J' * f;
 mu = tau * max(diag(JJ));
+if (mu == 0)
+  % J is an zero matrix.
+  fprintf('Terminate: local minimum reached.\n');
+  exit = 1;
+  return;
+end
 mu_min = 1e-12;
 nu = 2;
 

@@ -4,13 +4,23 @@ PSBox --- A matlab toolbox for photometric stereo.
 
 Author: Ying Xiong.
 Created: Jan 24, 2014.
-Release: Feb 07, 2014 (v0.2.1).
+Release: Feb 08, 2014 (v0.3).
 
 ================================================================
 Quick start.
 ================================================================
 >> setPath;
+>> PSBoxTest;
 >> demoPSBox;
+
+================================================================
+Features.
+================================================================
+* Fit the circle of chrome sphere from manual extracted points.
+* Find lighting direction from given chrome sphere.
+* Estimate light strength by solving a nonlinear least squares problem.
+* Perform photometric stereo to recover albedo and normal map.
+* Recover depth map from estimated normal vector field.
 
 ================================================================
 Notation and convention.
@@ -28,6 +38,15 @@ axis, with following examples:
   # To read an image from hard disk.
   I = im2double(imread('filename.png'));
   I = I(end:-1:1, :, :);
+
+Naming conventions:
+  'M' denotes number of images, 'N' number of pixels in the image, and 'N1'/'N2'
+      number of rows/columns of the image.
+  'I' denotes the collection of images, of size N1xN2xM.
+  'n' denotes the unit normal fields, of size N1xN2x3, 'rho' the albedo map, of
+      size N1xN2, and 'b' the scaled normal map [rho*n], of size N1xN2x3.
+  'L' denotes the lighting directions, of size 3xM, 'lambda' the lighting
+      strengths, of size Mx1.
 
 ================================================================
 Folder structure.
@@ -53,16 +72,10 @@ TopDirectory
 |   |-- Image_NN.tiff      # Suffix can also be 'png' or others.
 |
 +-- LightProbe-{1,2}       # Extracted light probe images.
-    |-- Image_NN.JPG
-    |-- ref.JPG
-    |-- circle_data.txt
-    |-- light_directions.txt
-
-
-================================================================
-Features.
-================================================================
-* Fit the circle of chrome sphere from manual extracted points.
-* Find lighting direction from given chrome sphere.
-* Perform photometric stereo to recover albedo and normal map.
-* Recover depth map from estimated normal vector field.
+|   |-- Image_NN.JPG
+|   |-- ref.JPG
+|   |-- circle_data.txt
+|   |-- light_directions.txt
+|
++-- light_directions.txt   # Estimated lighting directions from light probes.
++-- light_strength.txt     # Estimated lighting strengths by nonlinear least squares.
